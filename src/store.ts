@@ -27,7 +27,49 @@ export class Store {
       CREATE TABLE IF NOT EXISTS months (key TEXT PRIMARY KEY, kwh REAL NOT NULL);
       CREATE TABLE IF NOT EXISTS years  (key TEXT PRIMARY KEY, kwh REAL NOT NULL);
       CREATE TABLE IF NOT EXISTS meta   (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+      -- One row per Modbus connection attempt, failed or not, for diagnosing the stick.
+      CREATE TABLE IF NOT EXISTS attempts (
+        ts INTEGER NOT NULL, tick_ts INTEGER NOT NULL, attempt INTEGER NOT NULL,
+        ok INTEGER NOT NULL, phase TEXT NOT NULL, code TEXT, error TEXT,
+        connect_ms INTEGER, total_ms INTEGER, local_port INTEGER, bytes INTEGER
+      );
+      CREATE INDEX IF NOT EXISTS attempts_ts ON attempts(ts);
+      -- Connection lifecycle: when it opened, and when and why it closed.
+      CREATE TABLE IF NOT EXISTS link_events (ts INTEGER NOT NULL, kind TEXT NOT NULL, detail TEXT, host TEXT);
+      CREATE INDEX IF NOT EXISTS link_events_ts ON link_events(ts);
     `);
+    // Columns added after the table first shipped.
+    const have = new Set((this.db.prepare(`PRAGMA table_info(attempts)`).all() as Array<{ name: string }>).map((c) => c.name));
+    for (const [name, type] of [["reused", "INTEGER"], ["conn_reads", "INTEGER"], ["conn_age_ms", "INTEGER"], ["host", "TEXT"]]) {
+      if (!have.has(name)) this.db.exec(`ALTER TABLE attempts ADD COLUMN ${name} ${type}`);
+    }
+  }
+
+  logAttempt(a: {
+    ts: number; tickTs: number; attempt: number; ok: boolean; phase: string;
+    code: string | null; error: string | null;
+    connectMs: number | null; totalMs: number | null; localPort: number | null; bytes: number;
+    reused: boolean; connReads: number; connAgeMs: number | null; host: string;
+  }): void {
+    this.db.prepare(`
+      INSERT INTO attempts (ts, tick_ts, attempt, ok, phase, code, error, connect_ms, total_ms, local_port, bytes, reused, conn_reads, conn_age_ms, host)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+      a.ts, a.tickTs, a.attempt, a.ok ? 1 : 0, a.phase, a.code, a.error,
+      a.connectMs, a.totalMs, a.localPort, a.bytes, a.reused ? 1 : 0, a.connReads, a.connAgeMs, a.host,
+    );
+  }
+
+  logEvent(ts: number, kind: string, detail: string, host: string): void {
+    this.db.prepare(`INSERT INTO link_events VALUES (?, ?, ?, ?)`).run(ts, kind, detail, host);
+  }
+
+  getMeta(key: string): string | null {
+    const row = this.db.prepare(`SELECT value FROM meta WHERE key = ?`).get(key) as { value: string } | undefined;
+    return row?.value ?? null;
+  }
+
+  setMeta(key: string, value: string): void {
+    this.db.prepare(`INSERT OR REPLACE INTO meta VALUES (?, ?)`).run(key, value);
   }
 
   save(r: Reading): void {

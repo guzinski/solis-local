@@ -69,3 +69,19 @@ server.listen(config.httpPort, config.httpHost, () => {
   console.log(`dashboard on http://${config.httpHost}:${config.httpPort}  (polling every ${config.pollSeconds}s)`);
   poller.start();
 });
+
+// On Ctrl+C or a service stop, hang up on the stick properly first: a connection
+// dropped without a goodbye may keep one of its few client slots busy.
+let stopping = false;
+for (const signal of ["SIGINT", "SIGTERM"] as const) {
+  process.on(signal, () => {
+    if (stopping) process.exit(1); // second Ctrl+C: don't wait
+    stopping = true;
+    console.log("closing the stick connection…");
+    const exit = setTimeout(() => process.exit(0), 4000);
+    void poller.stop().finally(() => {
+      clearTimeout(exit);
+      process.exit(0);
+    });
+  });
+}

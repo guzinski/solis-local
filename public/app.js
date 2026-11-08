@@ -75,9 +75,12 @@ function linkStatus(live) {
   // A grid-tied inverter powers the stick from the panels, so it's off at night.
   const hour = new Date().getHours();
   const night = reading.pvW < 300 || hour < 6 || hour >= 19;
-  return night
-    ? { icon: SVG.moon, text: "Asleep · no sun" }
-    : { icon: SVG.alert, text: `Stick not answering since ${time(link.lastSeen ?? reading.ts)}` };
+  if (night) return { icon: SVG.moon, text: "Asleep · no sun" };
+  const since = time(link.lastSeen ?? reading.ts);
+  if (link.diagnosis === "busy") return { icon: SVG.wait, text: `Stick busy · retrying (last reading ${since})` };
+  if (link.diagnosis === "modbus-down") return { icon: SVG.alert, text: `Stick stopped serving readings at ${since} · unplug it for 10 s` };
+  if (link.diagnosis === "unreachable") return { icon: SVG.alert, text: `Stick not on the network since ${since} · searching` };
+  return { icon: SVG.alert, text: `Stick not answering since ${since}` };
 }
 
 function renderLive(live) {

@@ -44,9 +44,17 @@ Phone/browser ──HTTP──► server (src/) ──Modbus TCP :502, FC04 only
                            └── data/solar.db (every reading + day/month/year totals)
 ```
 
-- **Polling:** one connection per read, a few slow retries when the stick is
-  busy. The stick refuses connections while it uploads, and Solis asks for at
-  least 300 ms between frames.
+- **Polling:** one persistent connection, reused for every read and reopened
+  only when it breaks. With a new connection per read, the S5-WIFI-ST's port
+  502 stopped accepting connections after minutes to hours and stayed closed
+  until the stick was restarted. The suspected cause is that it serves very
+  few clients and doesn't reliably free a slot when a connection closes. A failed read is retried
+  once, 20 s later. Ctrl+C closes the connection properly before exiting.
+- **Failures:** the dashboard and alerts tell apart *busy* (clears by itself),
+  *Modbus stopped* (refused for 10 min while the stick is on the network:
+  unplug the stick for 10 s) and *unreachable* (night, or a new DHCP address,
+  which the app finds by scanning for the stick's login page). Every attempt is
+  logged; `node scripts/attempts.ts [date] [--all]` prints the timeline.
 - **Night:** a grid-tied inverter powers the stick from the panels, so it is
   off after sunset. The dashboard shows "Asleep" and the last values. This is
   normal, not an error.

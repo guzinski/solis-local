@@ -51,9 +51,19 @@ export class OutageAlert {
     if (now - state.lastSeen < this.minutes * 60_000) return;
     if (!isDaylightOutage(last, new Date(now))) return;
     this.alerted = true;
-    notify(
-      "Solar: stick not answering",
-      `No readings since ${clock(state.lastSeen)}. If it lasts, unplug the stick for 10 seconds and plug it back in.`,
-    );
+    const since = clock(state.lastSeen);
+    if (state.diagnosis === "modbus-down") {
+      notify(
+        "Solar: stick's Modbus stopped",
+        `The stick is online but refusing readings since ${since}. Unplug it for 10 seconds and plug it back in.`,
+      );
+    } else if (state.diagnosis === "unreachable") {
+      notify("Solar: stick not on the network", `No answer at ${state.host} since ${since}. Searching the LAN for it.`);
+    } else {
+      notify(
+        "Solar: stick not answering",
+        `No readings since ${since}. If it lasts, unplug the stick for 10 seconds and plug it back in.`,
+      );
+    }
   }
 }

@@ -1,0 +1,23 @@
+# systemd unit: runs the monitor in the background, starts at boot, restarts on crash.
+# Install (WSL with systemd=true):
+#   sudo cp deploy/solar-monitor.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now solar-monitor
+# Logs:   journalctl -u solar-monitor -f
+# Stop:   sudo systemctl stop solar-monitor   (closes the stick connection properly)
+[Unit]
+Description=Solar monitor (local Solis inverter reader)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=luciano
+WorkingDirectory=/home/luciano/workspace/solar
+ExecStart=/home/luciano/.nvm/versions/node/v24.15.0/bin/node --disable-warning=ExperimentalWarning src/server.ts
+Restart=always
+RestartSec=30
+# The app closes the stick connection on SIGTERM; give it time to do so.
+TimeoutStopSec=10
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
