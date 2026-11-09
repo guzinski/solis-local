@@ -27,7 +27,9 @@ Give the stick a DHCP reservation in your router so its address doesn't change.
 | `STICK_HOST` | — | Datalogger IP (required) |
 | `STICK_PORT` | `502` | Modbus TCP port |
 | `STICK_UNIT` | `1` | Inverter Modbus address (see the inverter's screen) |
-| `POLL_SECONDS` | `60` | Seconds between reads (minimum 5) |
+| `POLL_SECONDS` | `300` | Seconds between reads (minimum 5; ±10% jitter above 60) |
+| `MODBUS_REPLY_TIMEOUT_SECONDS` | `10` | Reply deadline, 10–300 s; `120` enables the longer-wait experiment and disables immediate retries |
+| `MODBUS_TRACE_PATH` | unset | Optional rotating JSONL diagnostic log; keep it under `data/` |
 | `ALERT_MINUTES` | `15` | Desktop alert after this long without readings in daylight (`0` = off; Windows toast under WSL) |
 | `PLANT_NAME` | `My solar plant` | Title on the dashboard |
 | `PLANT_KWP` | — | Panel capacity in kWp; enables % of capacity and kWh/kWp |
@@ -35,6 +37,67 @@ Give the stick a DHCP reservation in your router so its address doesn't change.
 | `DB_PATH` | `data/solar.db` | History database |
 
 `npm run check` type-checks the project.
+
+## Capture the next Modbus failure
+
+Install `tcpdump` once, then run this from the project directory in a terminal
+on the machine that runs the monitor:
+
+```bash
+sudo apt-get install tcpdump
+npm run diagnose
+```
+
+Stop any existing solar monitor first. `npm run diagnose` asks sudo to start a
+passive capture, waits for tcpdump to report that it is listening, then starts
+one monitor with a **120-second reply deadline** and diagnostic logging enabled.
+The monitor runs as your normal user. If capture cannot start, it does not start
+polling. `npm run capture` starts only the capture if you need separate terminals.
+
+Start this before restarting the stick. The app marks a still-unanswered request
+at 10 seconds, continues waiting on that same socket until 120 seconds, and does
+not resend or reconnect during that wait. A late valid reply completes normally.
+At 120 seconds it logs the timeout and closes the connection; the next attempt
+waits for the next scheduled poll. TCP keepalive remains enabled as before.
+This changes timeout handling for an experiment; it is not a proven fix.
+
+Evidence stays local and gitignored:
+
+- `data/diagnostics/modbus.jsonl` plus `.1`–`.3`: four rotating files, about
+  4 MB each. Each event includes UTC time, monotonic elapsed time, process/run ID,
+  connection ID, endpoint details, transaction ID where applicable, request and
+  received bytes, deadline markers, and local/peer socket events. Startup records
+  the effective settings. A write callback is explicitly **not** a TCP ACK.
+- `data/captures/<UTC-start>/modbus.pcap*`: eight rotating files, about 8 MB
+  each, containing only TCP traffic on the configured Modbus port. A port filter
+  keeps working across DHCP changes. It can include other traffic on that port
+  visible from this machine, but not other clients' traffic on a switched LAN.
+  Stick-to-cloud traffic and HTTP credentials are not included.
+
+After a failure, leave capture running through the 120-second deadline, cleanup,
+and preferably the next scheduled connection attempt. Then press Ctrl+C in the
+diagnostic terminal to flush the capture and stop the monitor. Preserve the whole
+capture directory and all four JSONL files before the next run. Rolling files
+eventually overwrite old evidence; they do not automatically freeze on failure.
+Check tcpdump's final dropped-packet count when interpreting a capture.
+
+To review packets with absolute TCP sequence numbers and UTC timestamps:
+
+```bash
+TZ=UTC tcpdump -nn -tttt -S -r data/captures/<UTC-start>/<pcap-file>
+```
+
+Correlate the connection's local port and request bytes in the JSONL trace with
+the pcap. `reply-slow` followed by a valid reply shows recovery during the longer
+wait. A peer FIN/RST before `local-end` differs from a client-initiated cleanup.
+ACKs prove delivery to the TCP stack, not successful Modbus processing. A capture
+cannot by itself prove an internal firmware deadlock or an RS485 collision.
+
+For normal operation, exit the diagnostic run and use `npm start`; the deadline
+defaults to 10 seconds unless overridden in `.env.local`. Keep the poll interval
+unchanged between comparative runs. `npm test` exercises late replies, timeout
+cleanup, peer closure, connection cancellation, malformed replies, log rotation,
+and retry suppression without contacting the stick.
 
 ## How it works
 

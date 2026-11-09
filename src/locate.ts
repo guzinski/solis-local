@@ -4,9 +4,12 @@
 const TIMEOUT_MS = 1500;
 const CONCURRENCY = 32;
 
-async function isSolisStick(host: string): Promise<boolean> {
+// True when the Solis stick's own web login answers at this address (HTTP 401,
+// realm "solis"). Confirms the stick is powered and on the network even when its
+// Modbus server (port 502) is dead.
+export async function isSolisStick(host: string, timeoutMs = TIMEOUT_MS): Promise<boolean> {
   try {
-    const res = await fetch(`http://${host}/`, { signal: AbortSignal.timeout(TIMEOUT_MS), redirect: "manual" });
+    const res = await fetch(`http://${host}/`, { signal: AbortSignal.timeout(timeoutMs), redirect: "manual" });
     await res.body?.cancel();
     return res.status === 401 && /realm="?solis/i.test(res.headers.get("www-authenticate") ?? "");
   } catch {

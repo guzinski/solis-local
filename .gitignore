@@ -1,3 +1,4 @@
 data/
 .env.local
 node_modules/
+stick-*.env

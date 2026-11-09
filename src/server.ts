@@ -67,6 +67,8 @@ const server = createServer((req, res) => {
 
 server.listen(config.httpPort, config.httpHost, () => {
   console.log(`dashboard on http://${config.httpHost}:${config.httpPort}  (polling every ${config.pollSeconds}s)`);
+  if (config.diagnosticPath) console.log(`Modbus trace: ${config.diagnosticPath}; reply deadline ${config.replyTimeoutMs / 1000}s`);
+  if (config.replyTimeoutMs > 10_000) console.log("Timeout experiment: mark slow replies at 10s, keep waiting on the same socket; no immediate retries.");
   poller.start();
 });
 

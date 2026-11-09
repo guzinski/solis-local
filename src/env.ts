@@ -14,6 +14,8 @@ export type Config = {
   stickPort: number;
   stickUnit: number;
   pollSeconds: number;
+  replyTimeoutMs: number;
+  diagnosticPath: string | null;
   alertMinutes: number;
   plantName: string;
   plantKwp: number | null;
@@ -29,11 +31,17 @@ export function readConfig(): Config {
   if (!stickHost || stickHost === "your_stick_ip") {
     throw new Error("STICK_HOST is not set; copy .env.example to .env.local and fill it in");
   }
+  const replySeconds = Number(env.MODBUS_REPLY_TIMEOUT_SECONDS ?? 10);
+  if (!Number.isFinite(replySeconds) || replySeconds < 10 || replySeconds > 300) {
+    throw new Error("MODBUS_REPLY_TIMEOUT_SECONDS must be between 10 and 300");
+  }
   return {
     stickHost,
     stickPort: Number(env.STICK_PORT ?? 502),
     stickUnit: Number(env.STICK_UNIT ?? 1),
-    pollSeconds: Math.max(5, Number(env.POLL_SECONDS ?? 60)),
+    pollSeconds: Math.max(5, Number(env.POLL_SECONDS ?? 300)),
+    replyTimeoutMs: replySeconds * 1000,
+    diagnosticPath: env.MODBUS_TRACE_PATH || null,
     alertMinutes: Math.max(0, Number(env.ALERT_MINUTES ?? 15)) || 0,
     plantName: env.PLANT_NAME ?? "My solar plant",
     plantKwp: Number(env.PLANT_KWP) > 0 ? Number(env.PLANT_KWP) : null,
