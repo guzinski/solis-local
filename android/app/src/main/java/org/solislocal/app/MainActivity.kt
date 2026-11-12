@@ -51,14 +51,32 @@ class MainActivity : Activity() {
         root.setOnApplyWindowInsetsListener { v, insets ->
             if (Build.VERSION.SDK_INT >= 30) {
                 val b = insets.getInsets(WindowInsets.Type.systemBars()); v.setPadding(b.left,b.top,b.right,b.bottom)
-            } else { @Suppress("DEPRECATION") v.setPadding(0,insets.systemWindowInsetTop,0,insets.systemWindowInsetBottom) }
-            insets
+                WindowInsets.CONSUMED
+            } else {
+                @Suppress("DEPRECATION")
+                v.setPadding(0,insets.systemWindowInsetTop,0,insets.systemWindowInsetBottom)
+                @Suppress("DEPRECATION")
+                insets.consumeSystemWindowInsets()
+            }
         }
-        val bar = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(12),dp(4),dp(8),dp(4)) }
-        route = TextView(this).apply { text = getString(R.string.app_name); textSize = 18f; setTextColor(inkColor) }
-        bar.addView(route, LinearLayout.LayoutParams(0,dp(52),1f))
-        bar.addView(Button(this).apply { text="⋮"; contentDescription=getString(R.string.options); setOnClickListener { menu() } })
-        root.addView(bar)
+        val bar = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16),0,dp(4),0) }
+        route = TextView(this).apply {
+            text=getString(R.string.app_name);textSize=16f;setTextColor(inkColor)
+            gravity=Gravity.CENTER_VERTICAL;maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END
+        }
+        bar.addView(route,LinearLayout.LayoutParams(0,-1,1f))
+        bar.addView(ImageButton(this).apply {
+            setImageResource(R.drawable.ic_more_vertical)
+            imageTintList=android.content.res.ColorStateList.valueOf(inkColor)
+            val ripple=android.util.TypedValue()
+            theme.resolveAttribute(android.R.attr.selectableItemBackgroundBorderless,ripple,true)
+            setBackgroundResource(ripple.resourceId)
+            setPadding(dp(12),dp(12),dp(12),dp(12))
+            contentDescription=getString(R.string.options)
+            tooltipText=getString(R.string.options)
+            setOnClickListener { menu() }
+        },LinearLayout.LayoutParams(dp(48),dp(48)))
+        root.addView(bar,LinearLayout.LayoutParams(-1,dp(48)))
         val body = FrameLayout(this)
         web = WebView(this).apply {
             setBackgroundColor(pageColor)
