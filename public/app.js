@@ -1,9 +1,27 @@
 // Solar dashboard: live values, a day power curve and energy totals.
 // No dependencies and no third-party requests; everything comes from /api/*.
 import { barChart, lineChart } from "./charts.js";
+import { locale, t, decimal, intervalLabel } from "./i18n.js";
 
 const $ = (id) => document.getElementById(id);
-const number = new Intl.NumberFormat("en-US");
+const number = new Intl.NumberFormat(locale);
+document.documentElement.lang = locale;
+for (const element of document.querySelectorAll("[data-i18n]")) element.textContent = t(element.dataset.i18n);
+for (const element of document.querySelectorAll("[data-i18n-aria]")) element.setAttribute("aria-label", t(element.dataset.i18nAria));
+const languageSelect = $("language-select");
+languageSelect.value = locale;
+languageSelect.addEventListener("change", () => {
+  try { localStorage.setItem("solar-locale", languageSelect.value); } catch { }
+  const url = new URL(location.href); url.searchParams.set("lang", languageSelect.value); location.href = url.href;
+});
+async function showBuild() {
+  try {
+    const installed = /SolarMonitor\/([\d.]+)\s+Build\/(\d+)/.exec(navigator.userAgent);
+    const version = installed ? {version:installed[1],build:installed[2]} : await get("/build-info.json");
+    $("build-version").textContent = t(installed ? "appBuild" : "panelBuild", version);
+  } catch { $("build-version").textContent = "Solar Monitor"; }
+}
+void showBuild();
 const SVG = {
   sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="color:var(--sun)"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.4 1.4M17.6 17.6 19 19M5 19l1.4-1.4M17.6 6.4 19 5"/></svg>',
   moon: '<svg viewBox="0 0 24 24" fill="currentColor" style="color:var(--idle)"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5Z"/></svg>',
@@ -11,7 +29,7 @@ const SVG = {
   wait: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="none" stroke="var(--idle)" stroke-width="2"/></svg>',
   dot: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="var(--good)"/></svg>',
 };
-const STATUS_NAMES = { 0: "Waiting", 1: "Open loop", 2: "Soft start", 3: "Generating" };
+const STATUS_NAMES = { 0: t("waiting"), 1: t("openLoop"), 2: t("softStart"), 3: t("generating") };
 
 const state = { day: dayKey(new Date()), period: "days", month: dayKey(new Date()).slice(0, 7), year: String(new Date().getFullYear()), live: null, totals: null };
 
@@ -19,21 +37,21 @@ const state = { day: dayKey(new Date()), period: "days", month: dayKey(new Date(
 function dayKey(d) { return d.toLocaleDateString("sv-SE"); }
 function parseDay(key) { const [y, m, d] = key.split("-").map(Number); return new Date(y, m - 1, d); }
 function shiftDay(key, by) { const d = parseDay(key); d.setDate(d.getDate() + by); return dayKey(d); }
-function time(ts) { return new Date(ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }); }
+function time(ts) { return new Date(ts).toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" }); }
 function power(w) {
   if (w == null) return ["—", ""];
-  return w >= 1000 ? [(w / 1000).toFixed(2), "kW"] : [String(Math.round(w)), "W"];
+  return w >= 1000 ? [decimal(w / 1000,2), "kW"] : [String(Math.round(w)), "W"];
 }
 function energy(kwh) {
   if (kwh == null) return ["—", ""];
-  return [kwh < 100 ? kwh.toFixed(1) : number.format(Math.round(kwh)), "kWh"];
+  return [kwh < 100 ? decimal(kwh,1) : number.format(Math.round(kwh)), "kWh"];
 }
 // Specific yield: energy per kWp of panels (equivalent full-sun hours).
 function perKwp(kwh) {
   const kwp = state.live?.plantKwp;
   if (!kwp || kwh == null) return null;
   const v = kwh / kwp;
-  return `${v < 10 ? v.toFixed(2) : number.format(Math.round(v))} kWh/kWp`;
+  return `${v < 10 ? decimal(v,2) : number.format(Math.round(v))} kWh/kWp`;
 }
 function setYield(id, kwh) {
   const value = perKwp(kwh);
@@ -44,9 +62,9 @@ function withUnit([value, unit]) { return unit ? `${value}<span class="unit">${u
 function text([value, unit]) { return unit ? `${value} ${unit}` : value; }
 function dayLabel(key) {
   const today = dayKey(new Date());
-  if (key === today) return "Today";
-  if (key === shiftDay(today, -1)) return "Yesterday";
-  return parseDay(key).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  if (key === today) return t("today");
+  if (key === shiftDay(today, -1)) return t("yesterday");
+  return parseDay(key).toLocaleDateString(locale, { weekday: "short", month: "short", day: "numeric" });
 }
 
 // ---------- data ----------
@@ -64,23 +82,23 @@ function duration(ms) {
 
 function linkStatus(live) {
   const { link, reading } = live;
-  if (!link.checked) return { icon: SVG.wait, text: "Connecting…" };
-  if (!reading) return { icon: SVG.alert, text: link.lastError ? "Can't reach the datalogger" : "Waiting for first reading" };
+  if (!link.checked) return { icon: SVG.wait, text: t("connecting") };
+  if (!reading) return { icon: SVG.alert, text: link.lastError ? t("cantReach") : t("firstReading") };
   if (link.online) {
     const name = STATUS_NAMES[reading.status];
     return reading.status === 3
-      ? { icon: SVG.sun, text: "Generating" }
-      : { icon: SVG.dot, text: name ?? `Online · status ${reading.status}` };
+      ? { icon: SVG.sun, text: t("generating") }
+      : { icon: SVG.dot, text: name ?? t("onlineStatus", {code: reading.status}) };
   }
   // A grid-tied inverter powers the stick from the panels, so it's off at night.
   const hour = new Date().getHours();
   const night = reading.pvW < 300 || hour < 6 || hour >= 19;
-  if (night) return { icon: SVG.moon, text: "Asleep · no sun" };
+  if (night) return { icon: SVG.moon, text: t("asleep"), asleep: true };
   const since = time(link.lastSeen ?? reading.ts);
-  if (link.diagnosis === "busy") return { icon: SVG.wait, text: `Stick busy · retrying (last reading ${since})` };
-  if (link.diagnosis === "modbus-down") return { icon: SVG.alert, text: `Stick stopped serving readings at ${since} · unplug it for 10 s` };
-  if (link.diagnosis === "unreachable") return { icon: SVG.alert, text: `Stick not on the network since ${since} · searching` };
-  return { icon: SVG.alert, text: `Stick not answering since ${since}` };
+  if (link.diagnosis === "busy") return { icon: SVG.wait, text: t("busy", {time: since}) };
+  if (link.diagnosis === "modbus-down") return { icon: SVG.alert, text: t("modbusDown", {time: since}) };
+  if (link.diagnosis === "unreachable") return { icon: SVG.alert, text: t("unreachable", {time: since}) };
+  return { icon: SVG.alert, text: t("noAnswer", {time: since}) };
 }
 
 function renderLive(live) {
@@ -93,53 +111,53 @@ function renderLive(live) {
 
   const r = live.reading;
   const online = live.link.online;
-  $("now-label").textContent = online ? "Output now" : "Last output";
+  $("now-label").textContent = online ? t("outputNow") : t("lastOutput");
   document.querySelector(".hero").classList.toggle("stale", !online);
   // Offline at night really is 0 W; offline in daylight means we don't know.
-  const asleep = status.text.startsWith("Asleep");
+  const asleep = Boolean(status.asleep);
   $("now-power").innerHTML = withUnit(power(r && live.link.checked ? (online ? r.acW : asleep ? 0 : null) : null));
   $("now-sub").textContent = r
     ? online
-      ? `Solar input ${text(power(r.pvW))} · updated ${time(r.ts)}`
+      ? t("solarInput", {power: text(power(r.pvW)), time: time(r.ts)})
       : asleep || Date.now() - r.ts < 15 * 60_000
-        ? `Last reading ${dayLabel(dayKey(new Date(r.ts))).toLowerCase()} at ${time(r.ts)} (${text(power(r.acW))})`
-        : `No readings for ${duration(Date.now() - r.ts)}. Unplug the stick for 10 s and plug it back in.`
-    : "No readings yet";
+        ? t("lastReadingAt", {day:dayLabel(dayKey(new Date(r.ts))).toLocaleLowerCase(locale), time:time(r.ts), power:text(power(r.acW))})
+        : t("outage", {duration:duration(Date.now() - r.ts)})
+    : t("noReadingsYet");
   $("today-kwh").innerHTML = withUnit(energy(r ? live.todayKwh : null));
-  $("yesterday").textContent = r ? `Yesterday ${text(energy(r.yesterdayKwh))}` : " ";
+  $("yesterday").textContent = r ? t("yesterdayValue", {value:text(energy(r.yesterdayKwh))}) : " ";
   $("month-kwh").innerHTML = withUnit(energy(r?.monthKwh));
-  $("last-month").textContent = r ? `Last month ${text(energy(r.lastMonthKwh))}` : " ";
+  $("last-month").textContent = r ? t("lastMonthValue", {value:text(energy(r.lastMonthKwh))}) : " ";
   $("year-kwh").innerHTML = withUnit(energy(r?.yearKwh));
-  $("last-year").textContent = r && r.lastYearKwh > 0 ? `Last year ${text(energy(r.lastYearKwh))}` : "First year";
+  $("last-year").textContent = r && r.lastYearKwh > 0 ? t("lastYearValue", {value:text(energy(r.lastYearKwh))}) : t("firstYear");
   $("total-kwh").innerHTML = withUnit(energy(r?.totalKwh));
   setYield("today-yield", r ? live.todayKwh : null);
   setYield("month-yield", r?.monthKwh);
   setYield("year-yield", r?.yearKwh);
   setYield("total-yield", r?.totalKwh);
-  $("capacity").textContent = live.plantKwp ? `${live.plantKwp} kWp installed` : "since install";
+  $("capacity").textContent = live.plantKwp ? t("installed", {value:number.format(live.plantKwp)}) : t("sinceInstall");
   const showMeter = Boolean(live.plantKwp && r && online);
   $("meter").hidden = !showMeter;
   if (showMeter) {
     const pct = (r.acW / (live.plantKwp * 1000)) * 100;
     $("meter-fill").style.width = `${Math.min(100, pct)}%`;
-    $("meter-label").textContent = `${pct < 10 ? pct.toFixed(1) : Math.round(pct)}% of ${live.plantKwp} kWp`;
+    $("meter-label").textContent = t("capacityPercent", {percent:pct < 10 ? decimal(pct,1) : number.format(Math.round(pct)), capacity:number.format(live.plantKwp)});
   }
 
   const rows = (pairs) => pairs.map(([k, v, note]) =>
     `<tr><th>${k}</th><td>${v}${note ? ` <span class="note">${note}</span>` : ""}</td></tr>`).join("");
   $("strings").tBodies[0].innerHTML = r
-    ? rows(r.strings.map((s, i) => [`String ${i + 1}`, `${text(power(s.v * s.a))}`, `${s.v.toFixed(1)} V · ${s.a.toFixed(1)} A`]))
-    : rows([["No data yet", "—"]]);
+    ? rows(r.strings.map((s, i) => [t("string", {number:i+1}), `${text(power(s.v * s.a))}`, `${decimal(s.v,1)} V · ${decimal(s.a,1)} A`]))
+    : rows([[t("noDataYet"), "—"]]);
   $("inverter").tBodies[0].innerHTML = r
     ? rows([
-        ["Grid voltage", `${r.gridV.toFixed(1)} V`],
-        ["Grid frequency", `${r.gridHz.toFixed(2)} Hz`],
-        ["Temperature", `${r.tempC.toFixed(1)} °C`],
-        ["Inverter status", STATUS_NAMES[r.status] ?? "Unknown", `code ${r.status}`],
-        ["Last reading", `${time(r.ts)}`, dayLabel(dayKey(new Date(r.ts))).toLowerCase()],
+        [t("gridVoltage"), `${decimal(r.gridV,1)} V`],
+        [t("gridFrequency"), `${decimal(r.gridHz,2)} Hz`],
+        [t("temperature"), `${decimal(r.tempC,1)} °C`],
+        [t("inverterStatus"), STATUS_NAMES[r.status] ?? t("unknown"), t("code", {code:r.status})],
+        [t("lastReading"), `${time(r.ts)}`, dayLabel(dayKey(new Date(r.ts))).toLowerCase()],
       ])
-    : rows([["No data yet", "—"]]);
-  $("foot").textContent = `Local only · read from the datalogger every ${live.pollSeconds} s, no cloud.`;
+    : rows([[t("noDataYet"), "—"]]);
+  $("foot").textContent = t("footer", {interval:intervalLabel(live.pollSeconds)});
 }
 
 // ---------- power curve ----------
@@ -151,8 +169,8 @@ async function renderDay() {
   const start = parseDay(state.day).getTime();
   const gapMs = Math.max(5 * 60_000, 3 * (state.live?.pollSeconds ?? 60) * 1000);
   $("power-sub").textContent = data.kwh != null
-    ? `Inverter output · ${text(energy(data.kwh))} produced`
-    : "Inverter output through the day";
+    ? t("produced", {value:text(energy(data.kwh))})
+    : t("powerDay");
   lineChart($("power-chart"), {
     points: data.points.map(([ts, ac]) => [ts, ac]),
     // Daylight window by default; widened if the data reaches further.
@@ -162,10 +180,10 @@ async function renderDay() {
     yFormat: (w) => (w >= 1000 ? `${number.format(w / 1000)}k` : String(w)),
     tip: ([ts, w]) => `<strong>${text(power(w))}</strong>${time(ts)}`,
     empty: state.day === today
-      ? "No readings yet today. The curve fills in as the sun comes up."
+      ? t("emptyToday")
       : data.kwh != null
-        ? `No power curve for this day; only its total (${text(energy(data.kwh))}) is known. Curves exist from the day this app started recording.`
-        : "No readings recorded for this day.",
+        ? t("noCurve", {value:text(energy(data.kwh))})
+        : t("emptyDay"),
   });
   // Table: one row per 15 minutes keeps it readable.
   const rows = [];
@@ -175,8 +193,8 @@ async function renderDay() {
     if (slot !== lastSlot) { rows.push(`<tr><td>${time(ts)}</td><td>${text(power(ac))}</td></tr>`); lastSlot = slot; }
   }
   $("power-table").innerHTML = rows.length
-    ? `<div class="scroll"><table><thead><tr><th>Time</th><th>Output</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`
-    : "<p>No readings.</p>";
+    ? `<div class="scroll"><table><thead><tr><th>${t("time")}</th><th>${t("output")}</th></tr></thead><tbody>${rows.join("")}</tbody></table></div>`
+    : `<p>${t("noReadings")}</p>`;
 }
 
 // ---------- energy bars ----------
@@ -193,7 +211,7 @@ function periodItems(totals, period) {
       items.push({
         key, value: lookup.get(key) ?? null,
         label: String(day),
-        title: d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }),
+        title: d.toLocaleDateString(locale, { weekday: "short", month: "short", day: "numeric", year: "numeric" }),
       });
     }
   } else if (period === "months") {
@@ -202,8 +220,8 @@ function periodItems(totals, period) {
       const key = dayKey(d).slice(0, 7);
       items.push({
         key, value: lookup.get(key) ?? null,
-        label: d.toLocaleDateString("en-US", { month: "short" }),
-        title: d.toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+        label: d.toLocaleDateString(locale, { month: "short" }),
+        title: d.toLocaleDateString(locale, { month: "long", year: "numeric" }),
       });
     }
   } else {
@@ -215,7 +233,7 @@ function periodItems(totals, period) {
   return items;
 }
 
-const PERIOD_SUB = { days: "Daily yield", months: "Monthly yield", years: "Yearly yield" };
+const PERIOD_SUB = { days:t("dailyYield"), months:t("monthlyYield"), years:t("yearlyYield") };
 
 // Earliest period that has data, so the back arrow stops there.
 function firstKey(period) {
@@ -228,7 +246,7 @@ function renderPeriodNav() {
   $("energy-nav").hidden = state.period === "years";
   if (state.period === "days") {
     const [y, m] = state.month.split("-").map(Number);
-    $("energy-label").textContent = new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    $("energy-label").textContent = new Date(y, m - 1, 1).toLocaleDateString(locale, { month: "long", year: "numeric" });
     const first = firstKey("days")?.slice(0, 7) ?? nowMonth;
     $("energy-prev").disabled = state.month <= first;
     $("energy-next").disabled = state.month >= nowMonth;
@@ -257,10 +275,10 @@ function renderEnergy() {
     if (missing > Math.max(10, r.yearKwh * 0.005)) {
       const firstKnown = state.totals.months.find((m) => m.key.startsWith(`${year}-`))?.key;
       const until = firstKnown
-        ? new Date(Number(year), Number(firstKnown.slice(5)) - 2, 1).toLocaleDateString("en-US", { month: "long" })
+        ? new Date(Number(year), Number(firstKnown.slice(5)) - 2, 1).toLocaleDateString(locale, { month: "long" })
         : null;
       $("energy-note").hidden = false;
-      $("energy-note").textContent = `${text(energy(missing))} produced earlier in ${year}${until ? ` (January–${until})` : ""} isn't split by month yet. The inverter only reports this month and last month; past months can be copied from its screen with scripts/backfill.ts.`;
+      $("energy-note").textContent = t("earlierEnergy", {value:text(energy(missing)), year, range:until ? t("monthRange", {month:until}) : ""});
     }
   }
   document.querySelectorAll(".segmented button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.period === state.period)));
@@ -269,22 +287,37 @@ function renderEnergy() {
     yFormat: (v) => number.format(v),
     valueFormat: (v) => text(energy(v)),
     tip: (item) => item.value == null
-      ? `<strong>No data</strong>${item.title}`
+      ? `<strong>${t("noData")}</strong>${item.title}`
       : `<strong>${text(energy(item.value))}</strong>${perKwp(item.value) ? `${perKwp(item.value)}<br>` : ""}${item.title}`,
-    empty: "History builds up from the first reading. The inverter also reports yesterday, last month and last year.",
+    empty: t("historyEmpty"),
     onSelect: state.period === "days" ? (item) => { state.day = item.key; renderDay(); $("power-title").scrollIntoView({ behavior: "smooth", block: "start" }); } : null,
   });
   const rows = items.filter((i) => i.value != null).reverse()
     .map((i) => `<tr><td>${i.title}</td>${state.live?.plantKwp ? `<td>${perKwp(i.value)}</td>` : ""}<td>${text(energy(i.value))}</td></tr>`).join("");
   $("energy-table").innerHTML = rows
-    ? `<div class="scroll"><table><thead><tr><th>Period</th>${state.live?.plantKwp ? "<th>Yield</th>" : ""}<th>Energy</th></tr></thead><tbody>${rows}</tbody></table></div>`
-    : "<p>No data yet.</p>";
+    ? `<div class="scroll"><table><thead><tr><th>${t("period")}</th>${state.live?.plantKwp ? `<th>${t("yield")}</th>` : ""}<th>${t("energy")}</th></tr></thead><tbody>${rows}</tbody></table></div>`
+    : `<p>${t("noDataYet")}</p>`;
 }
 
 // ---------- wiring ----------
+// The existing mobile gateway serves the APK on the same home computer.
+// Show the installer in the local browser; the HTTPS Android app doesn't need it.
+const hostParts = location.hostname.split(".").map(Number);
+const privateHost = hostParts.length === 4 && hostParts.every((v) => Number.isInteger(v) && v >= 0 && v <= 255) &&
+  (hostParts[0] === 10 || hostParts[0] === 127 ||
+   (hostParts[0] === 192 && hostParts[1] === 168) ||
+   (hostParts[0] === 172 && hostParts[1] >= 16 && hostParts[1] <= 31));
+if (location.protocol === "http:" && (privateHost || location.hostname === "localhost" || location.hostname === "[::1]")) {
+  const apk = new URL(location.origin);
+  apk.port = "3101";
+  apk.pathname = "/app.apk";
+  $("android-apk").href = apk.href;
+  $("app-download").hidden = false;
+}
+
 async function refreshLive() {
   try { renderLive(await get("/api/live")); }
-  catch { $("status").querySelector(".status-text").textContent = "Dashboard server unreachable"; $("status").querySelector(".status-icon").innerHTML = SVG.alert; }
+  catch { $("status").querySelector(".status-text").textContent = t("serverUnreachable"); $("status").querySelector(".status-icon").innerHTML = SVG.alert; }
 }
 async function refreshHistory() {
   try {

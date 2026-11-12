@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">Solar Monitor</string>
+    <string name="refresh">Refresh</string>
+    <string name="options">Options</string>
+    <string name="retry">Try again</string>
+    <string name="pair_phone">Link phone</string>
+    <string name="blocked">Access blocked</string>
+    <string name="unavailable">Dashboard unavailable</string>
+    <string name="open_failed">Could not open the dashboard. Check that the computer is on and try again.</string>
+    <string name="welcome">Your solar dashboard, anywhere.\n\nLink this phone by scanning the code on your computer while both are on your home Wi-Fi.</string>
+    <string name="connecting">Connecting to your dashboard…</string>
+    <string name="connection_failed">Unable to connect. Check your internet connection and that the computer is on. If access was revoked, link this phone again.</string>
+    <string name="home">At home</string>
+    <string name="remote">Remote access</string>
+    <string name="route">Solar · %1$s</string>
+    <string name="pair_other">Link another dashboard</string>
+    <string name="about_access">About access</string>
+    <string name="about_message">The app connects directly to your dashboard at home or through your VPS. Only linked phones have access. No VPN app is needed on the phone.</string>
+    <string name="camera_launch_failed">Could not open the camera. Try again or check the camera permission in Android settings.</string>
+    <string name="camera_permission">Allow camera access to scan the QR code. If permission is blocked, open Android Settings → Apps → Solar Monitor → Permissions.</string>
+    <string name="invalid_code">This is not a valid Solar linking code.</string>
+    <string name="pairing">Linking this phone…</string>
+    <string name="pair_failed">Could not link this phone. Generate a new code and try again on your home Wi-Fi.</string>
+    <string name="camera_denied">Camera access is not allowed. Enable it in Solar Monitor settings.</string>
+    <string name="cancel_scan">Cancel scan</string>
+    <string name="scan_prompt">Point the camera at the Solar code displayed on your computer</string>
+    <string name="camera_busy">Could not open the camera. Close other apps that may be using it and try again.</string>
+    <string name="scanner_failed">Could not start the QR reader on this phone.</string>
+    <string name="camera_start_failed">Could not start the camera. Check permission and try again.</string>
+    <string name="cert_mismatch">The code does not match the server certificate.</string>
+    <string name="cert_wrong_key">Certificate received for a different key.</string>
+    <string name="code_expired">Code expired or already used. Generate a new code.</string>
+    <string name="pair_request_failed">Could not link this phone (HTTP %1$d). Generate another code and try again.</string>
+    <string name="build_version">v%1$s · build %2$d</string>
+    <string name="loading">Loading…</string>
+</resources>

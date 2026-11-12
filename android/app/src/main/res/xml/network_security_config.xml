@@ -1,0 +1,5 @@
+<network-security-config>
+    <!-- Pairing is HTTP on the LAN only; PairingCode validates the literal private IP.
+         All dashboard requests use pinned HTTPS with the phone's own certificate. -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

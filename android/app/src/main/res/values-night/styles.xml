@@ -1,0 +1,13 @@
+<resources>
+    <!-- This dark parent reports isLightTheme=false to WebView, so the
+         dashboard's own prefers-color-scheme CSS matches the system theme. -->
+    <style name="Theme.Solar" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:colorAccent">#F5B324</item>
+        <item name="android:windowBackground">@color/solar_page</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:statusBarColor">@color/solar_page</item>
+        <item name="android:navigationBarColor">@color/solar_page</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+</resources>

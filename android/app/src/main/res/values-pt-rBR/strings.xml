@@ -1,0 +1,36 @@
+<resources>
+    <string name="app_name">Solar Monitor</string>
+    <string name="refresh">Atualizar</string>
+    <string name="options">Opções</string>
+    <string name="retry">Tentar novamente</string>
+    <string name="pair_phone">Vincular celular</string>
+    <string name="blocked">Acesso bloqueado</string>
+    <string name="unavailable">Painel indisponível</string>
+    <string name="open_failed">Não foi possível abrir o painel. Confira se o computador está ligado e tente novamente.</string>
+    <string name="welcome">Seu painel solar, em qualquer lugar.\n\nVincule este celular lendo o código no computador, com ambos no Wi-Fi de casa.</string>
+    <string name="connecting">Conectando ao seu painel…</string>
+    <string name="connection_failed">Não conseguimos conectar. Verifique a internet e se o computador está ligado. Se o acesso foi revogado, vincule este celular novamente.</string>
+    <string name="home">Em casa</string>
+    <string name="remote">Acesso remoto</string>
+    <string name="route">Solar · %1$s</string>
+    <string name="pair_other">Vincular outro painel</string>
+    <string name="about_access">Sobre o acesso</string>
+    <string name="about_message">O app conecta diretamente ao seu painel em casa ou pela sua VPS. Apenas celulares vinculados têm acesso. Não é necessário ativar uma VPN no celular.</string>
+    <string name="camera_launch_failed">Não foi possível abrir a câmera. Tente novamente ou confira a permissão de câmera nas configurações do Android.</string>
+    <string name="camera_permission">Permita o uso da câmera para ler o QR code. Se a permissão foi bloqueada, abra Configurações do Android → Aplicativos → Solar Monitor → Permissões.</string>
+    <string name="invalid_code">Este código não é um vínculo Solar válido.</string>
+    <string name="pairing">Vinculando este celular…</string>
+    <string name="pair_failed">Não foi possível vincular. Gere outro código e tente no Wi-Fi de casa.</string>
+    <string name="camera_denied">A câmera não está autorizada. Permita o acesso nas configurações do Solar Monitor.</string>
+    <string name="cancel_scan">Cancelar leitura</string>
+    <string name="scan_prompt">Aponte para o código Solar exibido no computador</string>
+    <string name="camera_busy">Não conseguimos abrir a câmera. Feche outros apps que possam estar usando a câmera e tente novamente.</string>
+    <string name="scanner_failed">Não foi possível iniciar o leitor de QR code neste celular.</string>
+    <string name="camera_start_failed">Não foi possível iniciar a câmera. Confira a permissão e tente novamente.</string>
+    <string name="cert_mismatch">O código não corresponde ao certificado do servidor.</string>
+    <string name="cert_wrong_key">Certificado recebido para outra chave.</string>
+    <string name="code_expired">Código expirado ou já utilizado. Gere outro código.</string>
+    <string name="pair_request_failed">Não foi possível vincular este celular (HTTP %1$d). Gere outro código e tente novamente.</string>
+    <string name="build_version">v%1$s · build %2$d</string>
+    <string name="loading">Carregando…</string>
+</resources>

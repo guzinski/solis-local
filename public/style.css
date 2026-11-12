@@ -143,7 +143,14 @@ main { display: grid; gap: 12px; }
 }
 .tooltip strong { display: block; font-size: 14px; }
 
+.app-download { display: flex; justify-content: center; margin-top: 12px; }
+.app-download[hidden] { display: none; }
+.app-download a { display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; color: var(--ink); background: var(--surface); box-shadow: inset 0 0 0 1px var(--ring); font-size: 13px; font-weight: 600; text-decoration: none; }
+.app-download a:hover { background: var(--grid); }
+.app-download a:focus-visible { outline: 2px solid var(--sun); outline-offset: 3px; }
 .foot { color: var(--muted); font-size: 12px; text-align: center; padding: 20px 0 0; }
+.language-picker { display: inline-flex; align-items: center; gap: 8px; margin: 10px 0; }
+.language-picker select { font: inherit; color: var(--ink-2); background: var(--surface); border: 1px solid var(--grid); border-radius: 7px; padding: 5px 8px; }
 
 @media (max-width: 640px) {
   .hero { grid-template-columns: 1fr; align-items: start; }

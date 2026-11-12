@@ -155,7 +155,41 @@ Phone/browser ──HTTP──► server (src/) ──Modbus TCP :502, FC04 only
   records). `--list` shows what's stored and how much of the year counter is
   still unsplit.
 
+## Android app and remote access
+
+The Android app displays the dashboard in a WebView, with native QR scanning,
+device certificates and automatic home/remote connection selection. It follows
+the phone's light/dark theme and supports en-US and pt-BR. The footer shows the
+installed app version/build (or dashboard version in a browser), a language
+selector, and the polling interval in minutes. After linking once at home, no VPN app is needed
+on the phone: the independent mobile gateway uses the existing home-to-VPS
+WireGuard tunnel and authenticates each phone over HTTPS.
+
+See [Android setup, build and deployment](docs/android-mobile.md). The LAN
+dashboard includes an APK download link in its footer. The gateway runs
+separately from the monitor and does not poll the inverter.
+
+### Remote access over an existing WireGuard tunnel
+
+If the monitor's machine and your phone already have WireGuard profiles on the
+same VPS, the dashboard can use that private network directly. No additional
+public dashboard port or web proxy is needed.
+
+1. Keep WireGuard active on the machine running the monitor. Its HTTP listener
+   must include the WireGuard address (`HTTP_HOST=0.0.0.0` does this).
+2. Activate the phone's WireGuard profile. Its peer `AllowedIPs` must include
+   the home machine's tunnel address, and the VPS must permit forwarding between
+   the phone and home peers. Reuse existing working settings.
+3. On the phone, open `http://<home-wireguard-ip>:3100`. Turn Wi-Fi off to check
+   that access works through mobile data. The normal LAN URL remains available.
+
+The current dashboard has no application login. Access over this route relies
+on the WireGuard peer keys and firewall rules. Keep port 3100 private; do not
+forward it from the VPS's public interface. The PC, WSL, monitor and home tunnel
+must stay running for remote access. Treat phone profile files and QR codes as
+credentials; keep them out of this repository and chat logs.
+
 ## Privacy
 
-Real IPs, serials and credentials live only in `.env.local` and `data/`, both
+Real IPs, serials and credentials live only in `.env.local`, `.env.mobile.local` and `data/`, all
 gitignored. Keep it that way in code, docs and commit messages.

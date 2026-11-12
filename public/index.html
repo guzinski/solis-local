@@ -12,15 +12,15 @@
   <header class="top">
     <div class="brand">
       <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><g><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>
-      <h1 id="plant-name">Solar plant</h1>
+      <h1 id="plant-name" data-i18n="plant">Solar plant</h1>
     </div>
-    <div id="status" class="status" role="status"><span class="status-icon"></span><span class="status-text">Loading…</span></div>
+    <div id="status" class="status" role="status"><span class="status-icon"></span><span class="status-text" data-i18n="loading">Loading…</span></div>
   </header>
 
   <main>
     <section class="hero card" aria-labelledby="now-label">
       <div class="hero-main">
-        <p id="now-label" class="eyebrow">Output now</p>
+        <p id="now-label" class="eyebrow" data-i18n="outputNow">Output now</p>
         <p class="hero-value"><span id="now-power">—</span></p>
         <div class="meter" id="meter" hidden>
           <div class="meter-track"><div class="meter-fill" id="meter-fill"></div></div>
@@ -29,70 +29,79 @@
         <p class="hero-sub" id="now-sub">&nbsp;</p>
       </div>
       <div class="hero-today">
-        <p class="eyebrow">Today</p>
+        <p class="eyebrow" data-i18n="today">Today</p>
         <p class="hero-today-value"><span id="today-kwh">—</span></p>
         <p class="hero-sub" id="today-yield" hidden></p>
         <p class="hero-sub" id="yesterday">&nbsp;</p>
       </div>
     </section>
 
-    <section class="tiles" aria-label="Energy totals">
-      <div class="tile card"><p class="eyebrow">This month</p><p class="tile-value" id="month-kwh">—</p><p class="tile-sub yield" id="month-yield" hidden></p><p class="tile-sub" id="last-month">&nbsp;</p></div>
-      <div class="tile card"><p class="eyebrow">This year</p><p class="tile-value" id="year-kwh">—</p><p class="tile-sub yield" id="year-yield" hidden></p><p class="tile-sub" id="last-year">&nbsp;</p></div>
-      <div class="tile card"><p class="eyebrow">Lifetime</p><p class="tile-value" id="total-kwh">—</p><p class="tile-sub yield" id="total-yield" hidden></p><p class="tile-sub" id="capacity">since install</p></div>
+    <section class="tiles" aria-label="Energy totals" data-i18n-aria="totals">
+      <div class="tile card"><p class="eyebrow" data-i18n="month">This month</p><p class="tile-value" id="month-kwh">—</p><p class="tile-sub yield" id="month-yield" hidden></p><p class="tile-sub" id="last-month">&nbsp;</p></div>
+      <div class="tile card"><p class="eyebrow" data-i18n="year">This year</p><p class="tile-value" id="year-kwh">—</p><p class="tile-sub yield" id="year-yield" hidden></p><p class="tile-sub" id="last-year">&nbsp;</p></div>
+      <div class="tile card"><p class="eyebrow" data-i18n="lifetime">Lifetime</p><p class="tile-value" id="total-kwh">—</p><p class="tile-sub yield" id="total-yield" hidden></p><p class="tile-sub" id="capacity" data-i18n="sinceInstall">since install</p></div>
     </section>
 
     <section class="card chart-card" aria-labelledby="power-title">
       <div class="card-head">
         <div>
-          <h2 id="power-title">Power</h2>
-          <p class="card-sub" id="power-sub">Inverter output through the day</p>
+          <h2 id="power-title" data-i18n="power">Power</h2>
+          <p class="card-sub" id="power-sub" data-i18n="powerDay">Inverter output through the day</p>
         </div>
         <div class="day-nav">
-          <button type="button" id="day-prev" aria-label="Previous day">‹</button>
-          <span id="day-label">Today</span>
-          <button type="button" id="day-next" aria-label="Next day">›</button>
+          <button type="button" id="day-prev" aria-label="Previous day" data-i18n-aria="previousDay">‹</button>
+          <span id="day-label" data-i18n="today">Today</span>
+          <button type="button" id="day-next" aria-label="Next day" data-i18n-aria="nextDay">›</button>
         </div>
       </div>
       <div class="chart" id="power-chart"></div>
-      <details class="table-view"><summary>Show as table</summary><div id="power-table"></div></details>
+      <details class="table-view"><summary data-i18n="table">Show as table</summary><div id="power-table"></div></details>
     </section>
 
     <section class="card chart-card" aria-labelledby="energy-title">
       <div class="card-head">
         <div>
-          <h2 id="energy-title">Energy</h2>
-          <p class="card-sub" id="energy-sub">Daily yield, last 30 days</p>
+          <h2 id="energy-title" data-i18n="energy">Energy</h2>
+          <p class="card-sub" id="energy-sub" data-i18n="dailyYield">Daily yield, last 30 days</p>
         </div>
-        <div class="segmented" role="tablist" aria-label="Energy period">
-          <button type="button" role="tab" data-period="days" aria-selected="true">Days</button>
-          <button type="button" role="tab" data-period="months" aria-selected="false">Months</button>
-          <button type="button" role="tab" data-period="years" aria-selected="false">Years</button>
+        <div class="segmented" role="tablist" aria-label="Energy period" data-i18n-aria="energyPeriod">
+          <button type="button" role="tab" data-period="days" aria-selected="true" data-i18n="days">Days</button>
+          <button type="button" role="tab" data-period="months" aria-selected="false" data-i18n="months">Months</button>
+          <button type="button" role="tab" data-period="years" aria-selected="false" data-i18n="years">Years</button>
         </div>
       </div>
       <div class="day-nav period-nav" id="energy-nav">
-        <button type="button" id="energy-prev" aria-label="Previous period">‹</button>
+        <button type="button" id="energy-prev" aria-label="Previous period" data-i18n-aria="previousPeriod">‹</button>
         <span id="energy-label"></span>
-        <button type="button" id="energy-next" aria-label="Next period">›</button>
+        <button type="button" id="energy-next" aria-label="Next period" data-i18n-aria="nextPeriod">›</button>
       </div>
       <div class="chart" id="energy-chart"></div>
       <p class="chart-note" id="energy-note" hidden></p>
-      <details class="table-view"><summary>Show as table</summary><div id="energy-table"></div></details>
+      <details class="table-view"><summary data-i18n="table">Show as table</summary><div id="energy-table"></div></details>
     </section>
 
     <div class="pair">
       <section class="card" aria-labelledby="strings-title">
-        <h2 id="strings-title">Solar strings</h2>
+        <h2 id="strings-title" data-i18n="strings">Solar strings</h2>
         <table class="kv" id="strings"><tbody></tbody></table>
       </section>
       <section class="card" aria-labelledby="inverter-title">
-        <h2 id="inverter-title">Inverter &amp; grid</h2>
+        <h2 id="inverter-title" data-i18n="inverter">Inverter &amp; grid</h2>
         <table class="kv" id="inverter"><tbody></tbody></table>
       </section>
     </div>
   </main>
 
-  <footer class="foot" id="foot">Local only — read from the datalogger on your network, no cloud.</footer>
+  <footer class="foot">
+    <p id="build-version"></p>
+    <label class="language-picker"><span data-i18n="language">Language</span>
+      <select id="language-select"><option value="en-US">English (US)</option><option value="pt-BR">Português (Brasil)</option></select>
+    </label>
+    <p id="foot" data-i18n="footerInitial">Local only — read from the datalogger on your network, no cloud.</p>
+    <div class="app-download" id="app-download" hidden>
+      <a id="android-apk" download="solar-monitor.apk"><span data-i18n="download">Baixar app Android</span> <span aria-hidden="true">↓</span></a>
+    </div>
+  </footer>
   <div class="tooltip" id="tooltip" role="tooltip" hidden></div>
   <script type="module" src="app.js"></script>
 </body>
