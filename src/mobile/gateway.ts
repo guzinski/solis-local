@@ -7,6 +7,7 @@ import { execFileSync } from "node:child_process";
 import { createReadStream, existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { createPki, PairError } from "./pki.ts";
+import { sendGatewayError } from "./error-page.ts";
 
 type Options = { dataDir: string; upstream: string; lan: string; remote: string;
   pairing: string; adminPort: number; tlsPort: number; apk: string };
@@ -43,18 +44,21 @@ export function createMobileGateway(options: Options) {
   pki.onRevoke((fp) => { for (const socket of clients.get(fp) ?? []) socket.destroy(); });
   const secure = https.createServer({ ...pki.tlsMaterial(), requestCert: true, rejectUnauthorized: true, minVersion: "TLSv1.2" }, (req, res) => {
     const fp = (req.socket as tls.TLSSocket).getPeerX509Certificate()?.fingerprint256;
-    if (!fp || !pki.isActiveDevice(fp)) return json(res, 403, { error: "Device revoked" });
-    if (req.method !== "GET" && req.method !== "HEAD") return json(res, 405, { error: "Read only" });
+    if (!fp || !pki.isActiveDevice(fp)) return sendGatewayError(req,res,403,"Device revoked");
+    if (req.method !== "GET" && req.method !== "HEAD") return sendGatewayError(req,res,405,"Read only");
     if (req.url === "/mobile/health") return json(res, 200, { ok: true });
-    if (!req.url?.startsWith("/") || req.url.startsWith("//")) return json(res, 400, { error: "Invalid path" });
+    if (!req.url?.startsWith("/") || req.url.startsWith("//")) return sendGatewayError(req,res,400,"Invalid path");
     // A fixed loopback destination prevents the public listener becoming a proxy.
     const proxy = http.request({ hostname: upstream.hostname, port: upstream.port || 80,
       path: req.url, method: req.method, timeout: 10_000, headers: { host: upstream.host } }, (reply) => {
+      if ((reply.statusCode ?? 200) >= 400 && !req.url?.startsWith("/api/")) {
+        reply.resume();sendGatewayError(req,res,reply.statusCode!,"Dashboard returned an error");return;
+      }
       res.writeHead(reply.statusCode ?? 502, { ...reply.headers, "cache-control": "no-store" });
       reply.pipe(res);
     });
     proxy.on("timeout", () => proxy.destroy(new Error("Dashboard timeout")));
-    proxy.on("error", () => { if (!res.headersSent) json(res, 502, { error: "Dashboard unavailable" }); else res.destroy(); });
+    proxy.on("error", () => { if (!res.headersSent) sendGatewayError(req,res,502,"Dashboard unavailable"); else res.destroy(); });
     res.on("close", () => proxy.destroy());
     proxy.end();
   });
@@ -73,7 +77,7 @@ export function createMobileGateway(options: Options) {
     try {
       if (path === "/app.apk" && req.method === "GET") {
         const apk = resolve(options.apk);
-        if (!existsSync(apk)) return json(res, 404, { error: "Build the Android app first" });
+        if (!existsSync(apk)) return sendGatewayError(req,res,404,"Build the Android app first");
         res.writeHead(200, { "content-type": "application/vnd.android.package-archive", "content-disposition": 'attachment; filename="solar-monitor.apk"', "cache-control": "no-store" });
         createReadStream(apk).pipe(res); return;
       }
@@ -93,7 +97,7 @@ export function createMobileGateway(options: Options) {
       const host = req.headers.host;
       const origins = [`http://127.0.0.1:${options.adminPort}`, `http://localhost:${options.adminPort}`];
       if (!local || !origins.some((o) => new URL(o).host === host) ||
-          (req.headers.origin && !origins.includes(req.headers.origin))) return json(res, 403, { error: "Open setup on the home computer" });
+          (req.headers.origin && !origins.includes(req.headers.origin))) return sendGatewayError(req,res,403,"Open setup on the home computer");
       if (path === "/i18n.js" && req.method === "GET") {
         res.writeHead(200, { "content-type": "text/javascript; charset=utf-8", "cache-control": "no-cache" });
         createReadStream(resolve("public/i18n.js")).pipe(res); return;
@@ -116,8 +120,8 @@ export function createMobileGateway(options: Options) {
       if (path === "/api/devices" && req.method === "GET") { json(res, 200, pki.loadDevices()); return; }
       const revoke = /^\/api\/devices\/([a-f0-9]{12})\/revoke$/.exec(path ?? "");
       if (revoke && req.method === "POST") { await readBody(req); json(res, 200, { ok: pki.revokeDevice(revoke[1]) }); return; }
-      json(res, 404, { error: "Not found" });
-    } catch (e) { json(res, e instanceof PairError ? e.status : 500, { error: e instanceof PairError ? e.message : "Request failed" }); }
+      sendGatewayError(req,res,404,"Not found");
+    } catch (e) { sendGatewayError(req,res,e instanceof PairError ? e.status : 500,e instanceof PairError ? e.message : "Request failed"); }
   });
   admin.requestTimeout = 20_000;
   return { secure, admin, pki };

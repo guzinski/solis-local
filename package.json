@@ -1,6 +1,6 @@
 {
   "name": "solar-monitor",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "type": "module",
   "description": "Local-first monitor for a Solis inverter: reads the datalogger over Modbus TCP, no vendor cloud",

@@ -38,15 +38,27 @@ test("mobile gateway: one-use pairing, authenticated proxy, private administrati
   const claim=await admin("/api/pair/claim",{ token,csr,name:"Test phone" });
   assert.equal(claim.status,200);
   assert.equal((await admin("/api/pair/claim",{ token,csr,name:"Replay" })).status,403);
-  const secure=(path:string,authenticated=true)=>new Promise<{status:number;body:string}>((resolve,reject)=>{
+  const secure=(path:string,authenticated=true,language="en-US")=>new Promise<{status:number;body:string}>((resolve,reject)=>{
     const req=https.get({ hostname:"127.0.0.1",port:securePort,path,servername:"hub.solar",ca:claim.body.ca,
-      ...(authenticated?{key:readFileSync(keyFile),cert:claim.body.cert}:{}),agent:false },res=>{
+      ...(authenticated?{key:readFileSync(keyFile),cert:claim.body.cert}:{}),agent:false,headers:{"accept-language":language} },res=>{
       const chunks:Buffer[]=[];res.on("data",c=>chunks.push(c));res.on("end",()=>resolve({status:res.statusCode!,body:Buffer.concat(chunks).toString()}));
     });req.on("error",reject);
   });
   await assert.rejects(secure("/",false));
   assert.deepEqual(await secure("/api/live"),{status:200,body:'{"solar":true}'});
   assert.equal((await secure("/mobile/health")).status,200);
+  // Reproduce the real failure mode: the gateway stays up while the reader /
+  // dashboard process is unavailable. Pages must not dump the API JSON.
+  upstream.closeAllConnections();
+  await new Promise<void>((resolve) => upstream.close(() => resolve()));
+  const page=await secure("/",true,"pt-BR");
+  assert.equal(page.status,502);
+  assert.ok(page.body.startsWith("<!doctype html>"));
+  assert.ok(page.body.includes("Seu painel está temporariamente indisponível"));
+  assert.ok(page.body.includes("<details>"));
+  const apiError=await secure("/api/live");
+  assert.equal(apiError.status,502);
+  assert.deepEqual(JSON.parse(apiError.body),{error:"Dashboard unavailable"});
   assert.equal((await admin(`/api/devices/${claim.body.device.id}/revoke`,{})).body.ok,true);
   await assert.rejects(secure("/api/live"));
 });

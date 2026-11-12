@@ -15,6 +15,7 @@ import android.view.View
 import android.view.WindowInsets
 import android.webkit.*
 import android.widget.*
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.net.URL
@@ -25,7 +26,7 @@ class MainActivity : Activity() {
     private lateinit var web: WebView
     private lateinit var message: TextView
     private lateinit var retry: Button
-    private lateinit var refresh: Button
+    private lateinit var pullRefresh: SwipeRefreshLayout
     private lateinit var pairAction: Button
     private lateinit var progress: ProgressBar
     private lateinit var panel: LinearLayout
@@ -56,8 +57,6 @@ class MainActivity : Activity() {
         val bar = LinearLayout(this).apply { gravity = Gravity.CENTER_VERTICAL; setPadding(dp(12),dp(4),dp(8),dp(4)) }
         route = TextView(this).apply { text = getString(R.string.app_name); textSize = 18f; setTextColor(inkColor) }
         bar.addView(route, LinearLayout.LayoutParams(0,dp(52),1f))
-        refresh = Button(this).apply { text=getString(R.string.refresh); setOnClickListener { connect() } }
-        bar.addView(refresh)
         bar.addView(Button(this).apply { text="⋮"; contentDescription=getString(R.string.options); setOnClickListener { menu() } })
         root.addView(bar)
         val body = FrameLayout(this)
@@ -76,6 +75,7 @@ class MainActivity : Activity() {
                     if (!allowed(req.url) || req.method != "GET") return response(403,getString(R.string.blocked))
                     return try {
                         val conn = URL(req.url.toString()).openConnection() as HttpsURLConnection
+                        conn.setRequestProperty("Accept-Language", resources.configuration.locales[0].toLanguageTag())
                         conn.instanceFollowRedirects = false; conn.connectTimeout = 6000; conn.readTimeout = 10_000
                         try {
                             val status = conn.responseCode
@@ -112,12 +112,21 @@ class MainActivity : Activity() {
                 override fun onPageFinished(view: WebView,url: String) {
                     if (loadingPage) {
                         loadingPage=false;connecting=false;this@MainActivity.progress.visibility=View.GONE
-                        refresh.isEnabled=true;panel.visibility=View.GONE
+                        pullRefresh.isRefreshing=false;panel.visibility=View.GONE
                     }
                 }
             }
         }
-        body.addView(web, FrameLayout.LayoutParams(-1,-1))
+        pullRefresh = SwipeRefreshLayout(this).apply {
+            setProgressBackgroundColorSchemeColor(pageColor)
+            val accent=android.util.TypedValue()
+            theme.resolveAttribute(android.R.attr.colorAccent,accent,true)
+            setColorSchemeColors(accent.data)
+            setOnChildScrollUpCallback { _,_ -> web.canScrollVertically(-1) }
+            setOnRefreshListener { connect(fromPull=true) }
+            addView(web,android.view.ViewGroup.LayoutParams(-1,-1))
+        }
+        body.addView(pullRefresh, FrameLayout.LayoutParams(-1,-1))
         panel = LinearLayout(this).apply { orientation=LinearLayout.VERTICAL; gravity=Gravity.CENTER; setPadding(dp(28),dp(20),dp(28),dp(20)); setBackgroundColor(pageColor) }
         message = TextView(this).apply { textSize=19f; gravity=Gravity.CENTER; setTextColor(inkColor) }
         progress = ProgressBar(this).apply { visibility=View.GONE;contentDescription=getString(R.string.loading) }
@@ -145,7 +154,7 @@ class MainActivity : Activity() {
         progress.visibility=if(loading) View.VISIBLE else View.GONE
         retry.visibility=if(error && !loading) View.VISIBLE else View.GONE
         pairAction.visibility=if(loading) View.GONE else View.VISIBLE
-        refresh.isEnabled=!loading
+        if (!loading) pullRefresh.isRefreshing=false
     }
     private fun reportPageError() = runOnUiThread {
         if (!isDestroyed && loadingPage) {
@@ -159,14 +168,16 @@ class MainActivity : Activity() {
         return uri.scheme=="https" && uri.host==u.host && uri.port==u.port && uri.userInfo==null
     }
     private fun response(status: Int,text: String) = WebResourceResponse("text/plain","utf-8",status,"Unavailable",mapOf("Cache-Control" to "no-store"),ByteArrayInputStream(text.toByteArray()))
-    private fun connect() {
+    private fun connect(fromPull: Boolean=false) {
         if (!::web.isInitialized || connecting || scannerOpen) return
         if (Identity.alias(this)==null) { showMessage(getString(R.string.welcome),error=false); return }
         connecting=true
         loadingPage=false
         web.stopLoading()
         web.onResume()
-        showMessage(getString(R.string.connecting),error=false,loading=true)
+        if (fromPull && base!=null && panel.visibility!=View.VISIBLE) {
+            pullRefresh.isRefreshing=true
+        } else showMessage(getString(R.string.connecting),error=false,loading=true)
         worker.execute {
             var selected: String? = null
             var label = ""
@@ -194,8 +205,12 @@ class MainActivity : Activity() {
             }
         }
     }
-    private fun menu() { AlertDialog.Builder(this).setTitle(getString(R.string.app_name)).setItems(arrayOf(getString(R.string.pair_other),getString(R.string.about_access))) { _,which ->
-        if(which==0) scan() else AlertDialog.Builder(this).setMessage(getString(R.string.about_message)).setPositiveButton(android.R.string.ok,null).show()
+    private fun menu() { AlertDialog.Builder(this).setTitle(getString(R.string.app_name)).setItems(arrayOf(getString(R.string.refresh),getString(R.string.pair_other),getString(R.string.about_access))) { _,which ->
+        when(which) {
+            0 -> connect(fromPull=true)
+            1 -> scan()
+            else -> AlertDialog.Builder(this).setMessage(getString(R.string.about_message)).setPositiveButton(android.R.string.ok,null).show()
+        }
     }.show() }
     private fun scan() {
         if (scannerOpen || connecting) return

@@ -14,6 +14,16 @@ install does not display the latest dashboard build as its own version.
 Refresh shows a progress indicator while checking the routes and loading the
 page. Retry actions are shown only after an actual error; they remain hidden
 during a pending connection or pairing request.
+Pull down while the dashboard is scrolled to the top to refresh. The large
+toolbar refresh button is removed; an equivalent action remains in the overflow
+menu for accessibility. Refreshing the dashboard reads stored data and does not
+trigger another Modbus request.
+
+If the gateway is reachable but the dashboard is unavailable, browser navigation
+gets a localized error page with a retry action and collapsed JSON diagnostics.
+API endpoints retain their JSON error contract. The Android app also shows a
+native connection error when a page cannot load, including when there is no
+HTTP response at all.
 
 ```text
 Phone -- HTTPS + its own device certificate --> VPS TCP relay
@@ -51,6 +61,29 @@ client; it never accepts arbitrary TLS errors or third-party origins.
    systemd units and opens TCP 9443 in UFW if active. Also allow that port in a
    provider firewall if one is configured. It does not modify WireGuard keys,
    existing peers, the camera relay or other web services.
+
+### Automatic startup and WSL recovery
+
+Install the reader as a user service with `bash scripts/install-monitor-service.sh`.
+It preserves the current 120-second reply deadline and diagnostic logging. Stop
+any terminal reader first; the installer refuses to start when another process
+already owns the dashboard port. Do not enable both the legacy system service
+and the new user reader. User logs: `journalctl --user -u solar-monitor -f`.
+
+On Windows/WSL, run `deploy/windows-autostart.ps1` elevated with
+`-RepoPath <linux-project-path>` and optionally `-Distro <distribution>`.
+It installs the **Solar Monitor** logon task, enables user lingering for startup,
+and runs a loop that brings WSL/user services back after an unexpected shutdown.
+It updates only Solar's LAN ports (3100, 3101, 9443), leaving the camera task and
+ports alone. Logs are in `%ProgramData%\SolarMonitor\boot.log`.
+
+The same setup installs `solar-capture.service`, a separate passive packet
+capture that starts with WSL. It runs as the owner with only `CAP_NET_RAW`,
+records eight rotating 8 MB files per session under `data/captures/`, and stops
+with SIGINT so tcpdump flushes its output. It never sends Modbus probes. Session
+directories accumulate across restarts; archive incidents and remove old sessions
+as needed. These services cannot survive WSL itself being stopped, but the Windows
+task restarts WSL while the Windows user remains logged in.
 
 Pairing administration is available only on the home computer at
 `http://127.0.0.1:3101`, with loopback address and Host/Origin checks. Do not
