@@ -11,7 +11,7 @@ setting, and the HTTP API refuses anything but GET.
 
 ## Setup
 
-Requires Node.js 22.13 or newer (it runs TypeScript directly and uses the
+Requires Node.js 22.16 or newer (it runs TypeScript directly and uses the
 built-in `node:sqlite`).
 
 ```bash
@@ -193,3 +193,15 @@ credentials; keep them out of this repository and chat logs.
 
 Real IPs, serials and credentials live only in `.env.local`, `.env.mobile.local` and `data/`, all
 gitignored. Keep it that way in code, docs and commit messages.
+
+### Input history and daily backup
+
+Tap a solar string to view its recorded DC power curve and browse previous days.
+Power is calculated from the stored voltage × current; old inverter energy
+totals cannot reconstruct missing per-string readings. Opening a graph only
+queries the local database.
+
+`npm run backup` creates and checks a compressed SQLite snapshot, including WAL
+data. `bash scripts/install-backup-service.sh` enables the daily user timer.
+Cloudflare R2 upload is optional and disabled until configured in the ignored
+`.env.backup.local`. See [backup and restoration instructions](docs/operations/backups.md).

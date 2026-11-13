@@ -74,6 +74,67 @@ async function get(path) {
   return res.json();
 }
 
+// ---------- input history (database only; never triggers an inverter read) ----------
+const stringHistory = { index: null, day: dayKey(new Date()), request: 0, points: [] };
+function drawStringHistory() {
+  if (stringHistory.index === null) return;
+  const start = parseDay(stringHistory.day).getTime();
+  const points = stringHistory.points.map(row => [row[0], row[stringHistory.index + 1]]).filter(([,w]) => Number.isFinite(w));
+  lineChart($("string-chart"), {
+    points, xMin: start + 5 * 3_600_000, xMax: start + 20 * 3_600_000,
+    gapMs: Math.max(5 * 60_000, 3 * (state.live?.pollSeconds ?? 60) * 1000),
+    yFormat: w => w >= 1000 ? `${number.format(w / 1000)}k` : String(w),
+    tip: ([ts,w]) => `<strong>${text(power(w))}</strong>${time(ts)}`,
+    empty: t("stringHistoryEmpty"),
+  });
+}
+async function renderStringHistory() {
+  if (stringHistory.index === null) return;
+  const request = ++stringHistory.request;
+  $("string-history").hidden = false;
+  $("string-history-title").textContent = t("string", {number:stringHistory.index + 1});
+  $("string-day").textContent = dayLabel(stringHistory.day);
+  $("string-next").disabled = stringHistory.day >= dayKey(new Date());
+  $("string-chart").hidden = true;
+  $("string-retry").hidden = true;
+  $("string-message").hidden = false;
+  $("string-message").textContent = t("loading");
+  try {
+    const data = await get(`/api/strings/day?date=${stringHistory.day}`);
+    if (request !== stringHistory.request) return;
+    stringHistory.points = data.points;
+    $("string-message").hidden = true;
+    $("string-chart").hidden = false;
+    drawStringHistory();
+  } catch {
+    if (request !== stringHistory.request) return;
+    $("string-message").textContent = t("stringHistoryError");
+    $("string-retry").hidden = false;
+  }
+}
+function closeStringHistory() {
+  stringHistory.index = null; ++stringHistory.request;
+  $("string-history").hidden = true;
+  document.querySelectorAll("[data-string]").forEach(button => button.setAttribute("aria-expanded", "false"));
+}
+$("strings").addEventListener("click", event => {
+  const button = event.target.closest("[data-string]");
+  if (!button) return;
+  const index = Number(button.dataset.string);
+  if (stringHistory.index === index) { closeStringHistory(); return; }
+  if (stringHistory.index === null) stringHistory.day = dayKey(new Date());
+  stringHistory.index = index;
+  document.querySelectorAll("[data-string]").forEach(b => b.setAttribute("aria-expanded", String(b === button)));
+  void renderStringHistory();
+});
+$("string-close").onclick = () => {
+  const button = document.querySelector(`[data-string="${stringHistory.index}"]`);
+  closeStringHistory(); button?.focus();
+};
+$("string-prev").onclick = () => { stringHistory.day = shiftDay(stringHistory.day, -1); void renderStringHistory(); };
+$("string-next").onclick = () => { stringHistory.day = shiftDay(stringHistory.day, 1); void renderStringHistory(); };
+$("string-retry").onclick = () => void renderStringHistory();
+
 // ---------- live ----------
 function duration(ms) {
   const min = Math.round(ms / 60_000);
@@ -146,7 +207,7 @@ function renderLive(live) {
   const rows = (pairs) => pairs.map(([k, v, note]) =>
     `<tr><th>${k}</th><td>${v}${note ? ` <span class="note">${note}</span>` : ""}</td></tr>`).join("");
   $("strings").tBodies[0].innerHTML = r
-    ? rows(r.strings.map((s, i) => [t("string", {number:i+1}), `${text(power(s.v * s.a))}`, `${decimal(s.v,1)} V · ${decimal(s.a,1)} A`]))
+    ? rows(r.strings.map((s, i) => [`<button type="button" class="string-action" data-string="${i}" aria-label="${t("stringHistoryOpen", {number:i+1})}" aria-expanded="${stringHistory.index === i}" aria-controls="string-history">${t("string", {number:i+1})} <span aria-hidden="true">↗</span></button>`, `${text(power(s.v * s.a))}`, `${decimal(s.v,1)} V · ${decimal(s.a,1)} A`]))
     : rows([[t("noDataYet"), "—"]]);
   $("inverter").tBodies[0].innerHTML = r
     ? rows([
@@ -324,6 +385,7 @@ async function refreshHistory() {
     state.totals = await get("/api/totals");
     renderEnergy();
     await renderDay();
+    await renderStringHistory();
   } catch { /* the live status already reports a dead server */ }
 }
 
@@ -340,7 +402,7 @@ $("energy-next").addEventListener("click", () => {
 document.querySelectorAll(".segmented button").forEach((b) =>
   b.addEventListener("click", () => { state.period = b.dataset.period; renderEnergy(); }));
 let resizeTimer;
-window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { renderEnergy(); renderDay(); }, 150); });
+window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(() => { renderEnergy(); renderDay(); drawStringHistory(); }, 150); });
 
 await refreshLive();
 await refreshHistory();

@@ -84,6 +84,21 @@
       <section class="card" aria-labelledby="strings-title">
         <h2 id="strings-title" data-i18n="strings">Solar strings</h2>
         <table class="kv" id="strings"><tbody></tbody></table>
+        <div id="string-history" class="string-history" hidden>
+          <div class="card-head">
+            <div><h3 id="string-history-title"></h3><p class="card-sub" data-i18n="stringPowerDay">DC input power through the day</p></div>
+            <button type="button" id="string-close" class="string-action" data-i18n="close">Close</button>
+          </div>
+          <div class="day-nav period-nav">
+            <button type="button" id="string-prev" data-i18n-aria="previousDay" aria-label="Previous day">‹</button>
+            <span id="string-day"></span>
+            <button type="button" id="string-next" data-i18n-aria="nextDay" aria-label="Next day">›</button>
+          </div>
+          <p id="string-message" role="status" hidden></p>
+          <button type="button" id="string-retry" class="string-action" data-i18n="retry" hidden>Try again</button>
+          <div class="chart" id="string-chart" hidden></div>
+          <p class="chart-note" data-i18n="stringHistoryNote">Calculated from recorded voltage × current. Only locally recorded samples are available.</p>
+        </div>
       </section>
       <section class="card" aria-labelledby="inverter-title">
         <h2 id="inverter-title" data-i18n="inverter">Inverter &amp; grid</h2>

@@ -45,9 +45,10 @@ const server = createServer((req, res) => {
   if (req.method !== "GET" && req.method !== "HEAD") return json(res, 405, { error: "read-only" });
 
   if (url.pathname === "/api/live") return json(res, 200, live());
-  if (url.pathname === "/api/day") {
+  if (url.pathname === "/api/day" || url.pathname === "/api/strings/day") {
     const day = url.searchParams.get("date") ?? dayKey(Date.now());
     if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return json(res, 400, { error: "date must be YYYY-MM-DD" });
+    if (url.pathname === "/api/strings/day") return json(res, 200, { date: day, points: store.stringCurve(day) });
     const kwh = store.totals("days", day).find((t) => t.key === day)?.kwh ?? null;
     return json(res, 200, { date: day, kwh, points: store.dayCurve(day) });
   }

@@ -108,6 +108,16 @@ export class Store {
     return rows.map((r) => [r.ts, Math.round(r.ac), Math.round(r.pv)]);
   }
 
+  // Average the sampled powers, not the voltage/current independently.
+  // NULL means this input wasn't recorded; it must not become a zero reading.
+  stringCurve(day: string): Array<[number, number | null, number | null]> {
+    const rows = this.db.prepare(`
+      SELECT MIN(ts) AS ts, AVG(pv1_v * pv1_a) AS pv1, AVG(pv2_v * pv2_a) AS pv2
+      FROM readings WHERE day = ? GROUP BY ts / 60000 ORDER BY ts`).all(day) as
+      Array<{ ts: number; pv1: number | null; pv2: number | null }>;
+    return rows.map(r => [r.ts, r.pv1 === null ? null : Math.round(r.pv1), r.pv2 === null ? null : Math.round(r.pv2)]);
+  }
+
   totals(table: "days" | "months" | "years", from = ""): Total[] {
     return this.db.prepare(`SELECT key, kwh FROM ${table} WHERE key >= ? ORDER BY key`).all(from) as Total[];
   }

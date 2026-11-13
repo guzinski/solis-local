@@ -1,6 +1,6 @@
 {
   "name": "solar-monitor",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "type": "module",
   "description": "Local-first monitor for a Solis inverter: reads the datalogger over Modbus TCP, no vendor cloud",
@@ -11,15 +11,19 @@
     "dev": "node --disable-warning=ExperimentalWarning --watch src/server.ts",
     "check": "tsc",
     "test": "node --disable-warning=ExperimentalWarning --test tests/*.test.ts tests/*.test.mjs",
+    "backup": "node --disable-warning=ExperimentalWarning scripts/backup.ts",
     "capture": "node --disable-warning=ExperimentalWarning scripts/capture-modbus.ts",
     "diagnose": "node --disable-warning=ExperimentalWarning scripts/capture-modbus.ts --monitor"
   },
   "engines": {
-    "node": ">=22.13"
+    "node": ">=22.16"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "typescript": "^5.7.0",
     "xlsx": "^0.18.5"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1168.0"
   }
 }

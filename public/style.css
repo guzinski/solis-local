@@ -161,3 +161,12 @@ main { display: grid; gap: 12px; }
   .pair { grid-template-columns: 1fr; }
   .chart { height: 200px; }
 }
+
+.string-action { font: inherit; color: var(--ink); background: transparent; border: 0; border-radius: 8px; padding: 10px 4px; min-height: 44px; cursor: pointer; }
+.string-action:hover, .string-action[aria-expanded="true"] { color: var(--sun); background: var(--grid); }
+.string-action:focus-visible { outline: 2px solid var(--sun); outline-offset: 2px; }
+.string-action[hidden], .string-history[hidden], #string-chart[hidden] { display: none; }
+.string-history { border-top: 1px solid var(--grid); margin-top: 12px; padding-top: 16px; min-width: 0; }
+.string-history h3 { margin: 0; font-size: 16px; }
+.string-history .chart { height: 200px; }
+.string-history .card-head { align-items: start; }
